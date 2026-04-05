@@ -84,11 +84,11 @@ with open(args.filename,'rb') as fp:
     data_fft = fft(data,axis=1)
 
     # Averaging
-    data_smoothed = 10*np.log10(ifft(fft(np.abs(data_fft),axis=0),n=windows_out,axis=0))
+    data_smoothed = 20*np.log10(ifft(fft(np.abs(data_fft),axis=0),n=windows_out,axis=0))
 
     # Equalization if requested
     if equalize:
-        #baseline = 10*np.log10(np.mean(np.abs(data_fft),axis=0))
+        #baseline = 20*np.log10(np.mean(np.abs(data_fft),axis=0))
         baseline = data_smoothed
         baseline = (baseline+np.roll(baseline[:,::-1],axis=1,shift=1))/2
         data_smoothed = data_smoothed-baseline
