@@ -14,16 +14,21 @@ parser.add_argument('filename')
 parser.add_argument('--window_size',
                     type=int,
                     help='FFT window size',
-                    default='1024')
+                    default=1024)
 parser.add_argument('--windows',
                     type=int,
                     help='Number of windows to process',
-                    default='1')
+                    default=1)
+parser.add_argument('--offset',
+                    type=int,
+                    help='Number of windows to skip before processing',
+                    default=0)
 
 args = parser.parse_args()
 
-window_size = int(args.window_size)
-windows = int(args.windows)
+window_size = args.window_size
+windows = args.windows
+offset = args.offset
 
 with open(args.filename,'rb') as fp:
     sample_rate = np.fromfile(fp, dtype='uint32', count=1, sep='')[0]
@@ -32,13 +37,20 @@ with open(args.filename,'rb') as fp:
     sample_size = np.fromfile(fp, dtype='uint32', count=1, sep='')[0]
     crc = np.fromfile(fp, dtype='uint32', count=1, sep='',offset=4)[0]
 
+    # Frequency axis
+    freq_axis = np.linspace(center_freq-sample_rate/2,
+                            center_freq+sample_rate/2,
+                            window_size)
+
     # Assess number of samples
     data_start = fp.tell()
     fp.seek(0,2)
     if sample_size == 16:
+        sample_bytes = 4
         sample_dtype = 'int16'
         num_samples = (fp.tell()-data_start)/4
     elif sample_size == 24: # NB apparently actually "24" means 32 bits
+        sample_bytes = 8
         sample_dtype = 'int32'
         num_samples = (fp.tell()-data_start)/8
     fp.seek(data_start,0)
@@ -47,6 +59,7 @@ with open(args.filename,'rb') as fp:
     data = np.fromfile(fp,
                        dtype=sample_dtype,
                        sep='',
+                       offset=2*window_size*offset*sample_bytes,
                        count=2*windows*window_size)
 
     # Unpack the data into the proper complex type
@@ -59,11 +72,6 @@ with open(args.filename,'rb') as fp:
 
     # Averaging
     data_smoothed = np.mean(10*np.log10(np.abs(data_fft)),axis=0)
-
-    # Frequency axis
-    freq_axis = np.linspace(center_freq-sample_rate/2,
-                            center_freq+sample_rate/2,
-                            window_size)
 
     # Display
     plt.plot(freq_axis,data_smoothed)
