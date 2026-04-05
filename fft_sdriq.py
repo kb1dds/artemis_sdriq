@@ -95,7 +95,7 @@ with open(args.filename,'rb') as fp:
 
     # Display
     if windows_out == 1:
-        plt.plot(freq_axis,data_smoothed.squeeze())
+        plt.plot(freq_axis,np.real(data_smoothed.squeeze()))
         plt.plot([tx_cf-tx_bw/2,tx_cf-tx_bw/2],plt.ylim(),'r')
         plt.plot([tx_cf+tx_bw/2,tx_cf+tx_bw/2],plt.ylim(),'r')
         plt.xlabel('Frequency (Hz)')
