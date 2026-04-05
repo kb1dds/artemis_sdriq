@@ -105,8 +105,8 @@ with open(args.filename,'rb') as fp:
         plt.imshow(np.real(data_smoothed),
                    extent=[center_freq-sample_rate/2,
                            center_freq+sample_rate/2,
-                           0,
-                           windows*window_size/sample_rate],
+                           offset*window_size/sample_rate,
+                           (offset+windows)*window_size/sample_rate],
                    interpolation = 'none',
                    aspect = 'auto'
                    )
