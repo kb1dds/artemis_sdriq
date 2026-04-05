@@ -2,7 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from numpy.fft import fft
+from numpy.fft import fft,ifft
 import argparse
 import datetime
 
@@ -23,12 +23,17 @@ parser.add_argument('--offset',
                     type=int,
                     help='Number of windows to skip before processing',
                     default=0)
+parser.add_argument('--windows_out',
+                    type=int,
+                    help='Number of windows to display in plot',
+                    default=1)
 
 args = parser.parse_args()
 
 window_size = args.window_size
 windows = args.windows
 offset = args.offset
+windows_out = args.windows_out
 
 with open(args.filename,'rb') as fp:
     sample_rate = np.fromfile(fp, dtype='uint32', count=1, sep='')[0]
@@ -71,15 +76,24 @@ with open(args.filename,'rb') as fp:
     data_fft = fft(data,axis=1)
 
     # Averaging
-    data_smoothed = np.mean(10*np.log10(np.abs(data_fft)),axis=0)
+    data_smoothed = ifft(fft(10*np.log10(np.abs(data_fft)),axis=0),n=windows_out,axis=0)
 
     # Display
-    plt.plot(freq_axis,data_smoothed)
-    plt.xlabel('Frequency (Hz)')
-    plt.ylabel('Relative signal level (dB)')
-    plt.show()
-
-    #plt.imshow(10*np.log10(np.abs(data_fft)))
-    #plt.show()
+    if windows_out == 1:
+        plt.plot(freq_axis,data_smoothed.squeeze())
+        plt.xlabel('Frequency (Hz)')
+        plt.ylabel('Relative signal level (dB)')
+        plt.show()
+    else:
+        plt.imshow(np.real(data_smoothed),
+                   extent=[center_freq-sample_rate/2,
+                           center_freq+sample_rate/2,
+                           1,
+                           windows_out],
+                   aspect = 'auto'
+                   )
+        plt.xlabel('Frequency (Hz)')
+        plt.ylabel('Window number')
+        plt.show()
     
     
