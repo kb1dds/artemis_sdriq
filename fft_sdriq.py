@@ -27,6 +27,10 @@ parser.add_argument('--windows_out',
                     type=int,
                     help='Number of windows to display in plot',
                     default=1)
+parser.add_argument('--equalize',
+                    help='Equalize the output by swapping left/right halves',
+                    action = 'store_true',
+                    default=False)
 
 args = parser.parse_args()
 
@@ -34,6 +38,7 @@ window_size = args.window_size
 windows = args.windows
 offset = args.offset
 windows_out = args.windows_out
+equalize = args.equalize
 
 tx_cf = 2216.5e6
 tx_bw = 2e6
@@ -81,6 +86,13 @@ with open(args.filename,'rb') as fp:
     # Averaging
     data_smoothed = 10*np.log10(ifft(fft(np.abs(data_fft),axis=0),n=windows_out,axis=0))
 
+    # Equalization if requested
+    if equalize:
+        #baseline = 10*np.log10(np.mean(np.abs(data_fft),axis=0))
+        baseline = data_smoothed
+        baseline = (baseline+np.roll(baseline[:,::-1],axis=1,shift=1))/2
+        data_smoothed = data_smoothed-baseline
+
     # Display
     if windows_out == 1:
         plt.plot(freq_axis,data_smoothed.squeeze())
@@ -93,15 +105,15 @@ with open(args.filename,'rb') as fp:
         plt.imshow(np.real(data_smoothed),
                    extent=[center_freq-sample_rate/2,
                            center_freq+sample_rate/2,
-                           1,
-                           windows_out],
+                           0,
+                           windows*window_size/sample_rate],
                    interpolation = 'none',
                    aspect = 'auto'
                    )
         plt.plot([tx_cf-tx_bw/2,tx_cf-tx_bw/2],plt.ylim(),'r')
         plt.plot([tx_cf+tx_bw/2,tx_cf+tx_bw/2],plt.ylim(),'r')
         plt.xlabel('Frequency (Hz)')
-        plt.ylabel('Window number')
+        plt.ylabel('Time (s)')
         plt.show()
     
     
