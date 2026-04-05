@@ -50,12 +50,15 @@ with open(args.filename,'rb') as fp:
                        count=2*windows*window_size)
 
     # Unpack the data into the proper complex type
-    data = np.reshape(data, (2,window_size,windows))
-    data = data[0,:,:] + 1j*data[1,:,:]
+    data = np.reshape(data, (windows,window_size,2), order='C')
+    data = data[:,:,0] + 1j*data[:,:,1]
     data.squeeze()
 
-    # FFT and averaging
-    data_fft = np.sum(fft(data,axis=0), axis=1)
+    # FFT
+    data_fft = fft(data,axis=1)
+
+    # Averaging
+    data_smoothed = np.mean(10*np.log10(np.abs(data_fft)),axis=0)
 
     # Frequency axis
     freq_axis = np.linspace(center_freq-sample_rate/2,
@@ -63,10 +66,12 @@ with open(args.filename,'rb') as fp:
                             window_size)
 
     # Display
-    plt.plot(freq_axis,10*np.log10(np.abs(data_fft)))
+    plt.plot(freq_axis,data_smoothed)
     plt.xlabel('Frequency (Hz)')
     plt.ylabel('Relative signal level (dB)')
     plt.show()
-    
+
+    #plt.imshow(10*np.log10(np.abs(data_fft)))
+    #plt.show()
     
     
