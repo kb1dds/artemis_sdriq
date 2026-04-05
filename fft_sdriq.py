@@ -50,12 +50,12 @@ with open(args.filename,'rb') as fp:
                        count=2*windows*window_size)
 
     # Unpack the data into the proper complex type
-    data = np.reshape(data, (2,windows,window_size))
+    data = np.reshape(data, (2,window_size,windows))
     data = data[0,:,:] + 1j*data[1,:,:]
     data.squeeze()
 
     # FFT and averaging
-    data_fft = np.sum(fft(data,axis=1), axis=0)
+    data_fft = np.sum(fft(data,axis=0), axis=1)
 
     # Frequency axis
     freq_axis = np.linspace(center_freq-sample_rate/2,
