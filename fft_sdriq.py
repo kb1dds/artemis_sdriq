@@ -34,7 +34,7 @@ parser.add_argument('--equalize',
 parser.add_argument('--nomarkers',
                     help='Disable markers on the display',
                     action = 'store_true',
-                    default=True)
+                    default=False)
 
 args = parser.parse_args()
 
