@@ -31,6 +31,10 @@ parser.add_argument('--equalize',
                     help='Equalize the output by swapping left/right halves',
                     action = 'store_true',
                     default=False)
+parser.add_argument('--nomarkers',
+                    help='Disable markers on the display',
+                    action = 'store_true',
+                    default=True)
 
 args = parser.parse_args()
 
@@ -39,6 +43,7 @@ windows = args.windows
 offset = args.offset
 windows_out = args.windows_out
 equalize = args.equalize
+nomarkers = args.nomarkers
 
 tx_cf = 2216.5e6
 tx_bw = 2e6
@@ -96,8 +101,9 @@ with open(args.filename,'rb') as fp:
     # Display
     if windows_out == 1:
         plt.plot(freq_axis,np.real(data_smoothed.squeeze()))
-        plt.plot([tx_cf-tx_bw/2,tx_cf-tx_bw/2],plt.ylim(),'r')
-        plt.plot([tx_cf+tx_bw/2,tx_cf+tx_bw/2],plt.ylim(),'r')
+        if not nomarkers:
+            plt.plot([tx_cf-tx_bw/2,tx_cf-tx_bw/2],plt.ylim(),'r')
+            plt.plot([tx_cf+tx_bw/2,tx_cf+tx_bw/2],plt.ylim(),'r')
         plt.xlabel('Frequency (Hz)')
         plt.ylabel('Relative signal level (dB)')
         plt.show()
@@ -110,8 +116,9 @@ with open(args.filename,'rb') as fp:
                    interpolation = 'none',
                    aspect = 'auto'
                    )
-        plt.plot([tx_cf-tx_bw/2,tx_cf-tx_bw/2],plt.ylim(),'r')
-        plt.plot([tx_cf+tx_bw/2,tx_cf+tx_bw/2],plt.ylim(),'r')
+        if not nomarkers:
+            plt.plot([tx_cf-tx_bw/2,tx_cf-tx_bw/2],plt.ylim(),'r')
+            plt.plot([tx_cf+tx_bw/2,tx_cf+tx_bw/2],plt.ylim(),'r')
         plt.xlabel('Frequency (Hz)')
         plt.ylabel('Time (s)')
         plt.show()
