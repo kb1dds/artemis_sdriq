@@ -35,6 +35,10 @@ parser.add_argument('--nomarkers',
                     help='Disable markers on the display',
                     action = 'store_true',
                     default=False)
+parser.add_argument('--demod',
+                    help='Desired shift in center frequency in Hz',
+                    type=int,
+                    default=0)
 
 args = parser.parse_args()
 
@@ -44,6 +48,7 @@ offset = args.offset
 windows_out = args.windows_out
 equalize = args.equalize
 nomarkers = args.nomarkers
+demod = args.demod
 
 # Target signal parameters
 tx_cf = 2216.5e6 # Center frequency (Hz)
@@ -82,8 +87,9 @@ with open(args.filename,'rb') as fp:
                        count=2*windows*window_size)
 
     # Unpack the data into the proper complex type
-    data = np.reshape(data, (windows,window_size,2), order='C')
-    data = data[:,:,0] + 1j*data[:,:,1]
+    data = np.reshape(data, (windows*window_size,2), order='C')
+    data = data[:,0] + 1j*data[:,1]
+    data = np.reshape(data, (windows,window_size), order='C')
     data.squeeze()
 
     # FFT
