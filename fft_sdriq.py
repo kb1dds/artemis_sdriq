@@ -73,13 +73,12 @@ with open(args.filename,'rb') as fp:
         sample_bytes = 8
         sample_dtype = 'int32'
         num_samples = (fp.tell()-data_start)/8
-    fp.seek(data_start,0)
-
+        
     # Pull data from the file
+    fp.seek(data_start+window_size*offset*sample_bytes,0)
     data = np.fromfile(fp,
                        dtype=sample_dtype,
                        sep='',
-                       offset=2*window_size*offset*sample_bytes,
                        count=2*windows*window_size)
 
     # Unpack the data into the proper complex type
@@ -91,7 +90,8 @@ with open(args.filename,'rb') as fp:
     data_fft = fft(data,axis=1)
 
     # Averaging
-    data_smoothed = 20*np.log10(ifft(fft(np.abs(data_fft),axis=0),n=windows_out,axis=0))
+    #data_smoothed = 20*np.log10(ifft(fft(np.abs(data_fft),axis=0),n=windows_out,axis=0))
+    data_smoothed = 20*np.log10(data_fft)
 
     # Equalization if requested
     if equalize:
@@ -118,7 +118,8 @@ with open(args.filename,'rb') as fp:
                            offset*window_size/sample_rate,
                            (offset+windows)*window_size/sample_rate],
                    interpolation = 'none',
-                   aspect = 'auto'
+                   aspect = 'auto',
+                   origin = 'lower'
                    )
         if not nomarkers:
             plt.plot([tx_cf,tx_cf],plt.ylim(),'r:')
