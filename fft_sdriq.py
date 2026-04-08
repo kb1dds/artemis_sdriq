@@ -45,8 +45,10 @@ windows_out = args.windows_out
 equalize = args.equalize
 nomarkers = args.nomarkers
 
-tx_cf = 2216.5e6
-tx_bw = 2e6
+# Target signal parameters
+tx_cf = 2216.5e6 # Center frequency (Hz)
+tx_bw = 2e6      # Bandwidth (Hz)
+tx_dop = -18e3   # Doppler frequency offset (Hz)
 
 with open(args.filename,'rb') as fp:
     sample_rate = np.fromfile(fp, dtype='uint32', count=1, sep='')[0]
@@ -102,6 +104,8 @@ with open(args.filename,'rb') as fp:
     if windows_out == 1:
         plt.plot(freq_axis,np.real(data_smoothed.squeeze()))
         if not nomarkers:
+            plt.plot([tx_cf,tx_cf],plt.ylim(),'r:')
+            plt.plot([tx_cf+tx_dop,tx_cf+tx_dop],plt.ylim(),'b:')
             plt.plot([tx_cf-tx_bw/2,tx_cf-tx_bw/2],plt.ylim(),'r')
             plt.plot([tx_cf+tx_bw/2,tx_cf+tx_bw/2],plt.ylim(),'r')
         plt.xlabel('Frequency (Hz)')
@@ -117,6 +121,8 @@ with open(args.filename,'rb') as fp:
                    aspect = 'auto'
                    )
         if not nomarkers:
+            plt.plot([tx_cf,tx_cf],plt.ylim(),'r:')
+            plt.plot([tx_cf+tx_dop,tx_cf+tx_dop],plt.ylim(),'b:')
             plt.plot([tx_cf-tx_bw/2,tx_cf-tx_bw/2],plt.ylim(),'r')
             plt.plot([tx_cf+tx_bw/2,tx_cf+tx_bw/2],plt.ylim(),'r')
         plt.xlabel('Frequency (Hz)')
