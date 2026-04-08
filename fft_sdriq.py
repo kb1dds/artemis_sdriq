@@ -90,8 +90,7 @@ with open(args.filename,'rb') as fp:
     data_fft = fft(data,axis=1)
 
     # Averaging
-    #data_smoothed = 20*np.log10(ifft(fft(np.abs(data_fft),axis=0),n=windows_out,axis=0))
-    data_smoothed = 20*np.log10(data_fft)
+    data_smoothed = 20*np.log10(ifft(fft(np.abs(data_fft),axis=0),n=windows_out,axis=0))
 
     # Equalization if requested
     if equalize:
