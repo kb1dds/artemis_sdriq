@@ -7,7 +7,7 @@ import argparse
 import datetime
 
 parser = argparse.ArgumentParser(
-    prog = 'fft_sdriq_header.py',
+    prog = 'fft_sdriq.py',
     description = 'Run averaged FFT on SDRIQ file produced by SDRAngel')
 
 parser.add_argument('filename')
