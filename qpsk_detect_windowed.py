@@ -91,7 +91,8 @@ with open(args.filename,'rb') as fp:
     data = data*np.exp(1j*2*np.pi*(tx_cf-center_freq)/sample_rate*np.arange(window_size))
 
     # AGC the data
-    data = data / ifft(fft(np.abs(data),n=agc_size,axis=1),n=window_size,axis=1)
+    if agc_size > 1:
+        data = data / ifft(fft(np.abs(data),n=agc_size,axis=1),n=window_size,axis=1)
 
     # Squash the phase
     data_sq = data**4
