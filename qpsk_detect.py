@@ -31,6 +31,10 @@ parser.add_argument('--fftsamples',
                     help='Number of samples in Doppler FFT',
                     type=int,
                     default=1024)
+parser.add_argument('--bandpass',
+                    help='Bandpass filter width in Hz; default is None',
+                    type=int,
+                    default=None)
 
 args = parser.parse_args()
 
@@ -39,6 +43,7 @@ fftsamples = args.fftsamples
 offset = args.offset
 nomarkers = args.nomarkers
 tx_cf = args.center
+bandpass = args.bandpass
 
 symbol_rates = [72e3, 2e6, 4e6, 6e6] # Possible symbol rates
 
@@ -71,6 +76,11 @@ with open(args.filename,'rb') as fp:
     # Unpack the data into the proper complex type
     data = np.reshape(data, (window_size,2), order='C')
     data = data[:,0] + 1j*data[:,1]
+    freq_axis = np.linspace(center_freq-sample_rate/2,
+                            center_freq+sample_rate/2,
+                            window_size)
+    if bandpass is not None:
+        data = ifft(fft(data,axis=0)*np.conjugate(fft(np.abs(freq_axis-tx_cf)<bandpass,axis=0)))
     data.squeeze()
 
     # Baseband the data
