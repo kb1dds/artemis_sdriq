@@ -107,7 +107,7 @@ with open(args.filename,'rb') as fp:
     data_fft = fft(data_sq,axis=1,n=fftsamples)
 
     # Averaging
-    data_smoothed = 20*np.log10(ifft(fft(np.abs(data_fft),axis=0),n=1,axis=0))
+    data_smoothed = 10*np.log10(ifft(fft(np.abs(data_fft)**2,axis=0),n=1,axis=0))
     freq_axis=np.linspace(0,sample_rate,fftsamples)
 
     # Peak detect
