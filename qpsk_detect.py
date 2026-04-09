@@ -84,21 +84,18 @@ with open(args.filename,'rb') as fp:
     freq_axis=np.linspace(0,sample_rate,fftsamples)
 
     # Peak detect
-    peak_freq = freq_axis[np.argmax(data_smoothed.squeeze())]
-
-    # Estimate Doppler from possible symbol rates
-    doppler = min([abs(peak_freq-sr) for sr in symbol_rates])
+    det_symbol_rate = freq_axis[np.argmax(data_smoothed.squeeze())]
 
     # Display
     plt.plot(freq_axis,np.real(data_smoothed.squeeze()),'b')
     if not nomarkers:
+        plt.plot([det_symbol_rate,det_symbol_rate],plt.ylim(),'c')
         for sr in symbol_rates:
             plt.plot([sr,sr],plt.ylim(),'r')
-        plt.plot([peak_freq,peak_freq],plt.ylim(),'c')
     plt.plot(freq_axis,np.real(data_smoothed.squeeze()),'b')
     plt.xlabel('Doppler frequency (Hz)')
     plt.ylabel('Relative signal level (dB)')
-    plt.title('Doppler estimate : {} Hz'.format(doppler))
+    plt.title('Detected symbol rate : {:4.2f} MHz'.format(det_symbol_rate/1e6))
     plt.show()
     
     
