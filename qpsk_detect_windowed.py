@@ -39,6 +39,10 @@ parser.add_argument('--bandpass',
                     help='Bandpass filter width in Hz; default is None',
                     type=int,
                     default=None)
+parser.add_argument('--agcsize',
+                    help='Size of AGC window',
+                    type=int,
+                    default=1)
 
 args = parser.parse_args()
 
@@ -49,6 +53,7 @@ offset = args.offset
 nomarkers = args.nomarkers
 tx_cf = args.center
 bandpass = args.bandpass
+agc_size = args.agcsize
 
 symbol_rates = [72e3, 2e6, 4e6, 6e6] # Possible symbol rates
 
@@ -91,6 +96,9 @@ with open(args.filename,'rb') as fp:
 
     # Baseband the data
     data = data*np.exp(1j*2*np.pi*(tx_cf-center_freq)/sample_rate*np.arange(window_size))
+
+    # AGC the data
+    data = data / ifft(fft(np.abs(data),n=agc_size,axis=1),n=window_size,axis=1)
 
     # Squash the phase
     data_sq = data**4
