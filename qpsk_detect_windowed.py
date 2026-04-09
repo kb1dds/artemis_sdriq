@@ -7,7 +7,7 @@ import argparse
 import datetime
 
 parser = argparse.ArgumentParser(
-    prog = 'qpsk_detect.py',
+    prog = 'qpsk_detect_windowed.py',
     description = 'Try to detect a QPSK signal in an SDRIQ file produced by SDRAngel')
 
 parser.add_argument('filename')
