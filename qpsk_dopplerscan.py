@@ -6,6 +6,18 @@ from numpy.fft import fft,ifft
 import argparse
 import datetime
 
+# Source - https://stackoverflow.com/a/56530727
+# Posted by janispritzkau
+# Retrieved 2026-04-09, License - CC BY-SA 4.0
+# Modified:
+#  Now root raised cosine rather than raised cosine
+#  Now in frequency domain
+def rrcosfilter(N, beta, Ts, Fs):
+    t = (np.arange(N) - N / 2) / Fs
+    return np.sqrt(fft(np.where(np.abs(2*t) == Ts / beta,
+        np.pi / 4 * np.sinc(t/Ts),
+        np.sinc(t/Ts) * np.cos(np.pi*beta*t/Ts) / (1 - (2*beta*t/Ts) ** 2))))
+
 parser = argparse.ArgumentParser(
     prog = 'qpsk_doppler.py',
     description = 'Try to detect a QPSK signal through a Doppler scan in an SDRIQ file produced by SDRAngel')
@@ -38,7 +50,7 @@ parser.add_argument('--center',
 parser.add_argument('--bandpass',
                     help='Bandpass filter width in Hz; default is None',
                     type=int,
-                    default=4000000)
+                    default=4e6)
 parser.add_argument('--dopplersamples',
                     help='Number of Doppler samples',
                     type=int,
@@ -95,26 +107,28 @@ with open(args.filename,'rb') as fp:
     # Unpack the data into the proper complex type
     data = np.reshape(data, (windows,window_size,2), order='C')
     data = data[:,:,0] + 1j*data[:,:,1]
+
+    # Various frequency axes
     freq_axis = np.linspace(center_freq-sample_rate/2,
                             center_freq+sample_rate/2,
                             window_size)
-
-    # Use a bandpass filter on the signal
-    if bandpass is not None:
-        data = ifft(fft(data,axis=1)*np.conjugate(np.abs(freq_axis-tx_cf)<(bandpass/2)),axis=1)
-
     doppler_axis = np.linspace(dopplerstart,dopplerstop,dopplersamples)
+
+    # Preallocate result array 
     doppler_samples = np.zeros((windows,dopplersamples),dtype=np.complex128)
 
     for i,dop in enumerate(doppler_axis):
         # Baseband the data
         data_baseband = data*np.exp(1j*2*np.pi*(tx_cf-center_freq-dop)/sample_rate*np.arange(window_size))
 
+        # Apply RRC filter
+        data_baseband = ifft(fft(data_baseband,axis=1)*np.conjugate(rrcosfilter(window_size, 0.1, 1.0/bandpass, sample_rate)))
+
         # Squash the phase
         data_sq = data_baseband**4
 
         # Measure signal
-        doppler_samples[:,i] = np.mean(data_sq,axis=1)
+        doppler_samples[:,i] = np.abs(np.mean(data_sq,axis=1))
 
     # Averaging
     data_smoothed = 20*np.log10(np.abs(ifft(fft(doppler_samples,axis=0),n=windows_out,axis=0)))
@@ -148,7 +162,7 @@ with open(args.filename,'rb') as fp:
             for i,d in enumerate(doppler_idx):
                 doppler_dets[i] = doppler_axis[d]
 
-            plt.plot(doppler_dets,time_axis,'b+')
+            plt.plot(doppler_dets,time_axis,'r+')
         plt.xlabel('Doppler frequency (Hz)')
         plt.ylabel('Time (s)')
         plt.show()
