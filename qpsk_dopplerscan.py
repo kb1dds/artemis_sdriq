@@ -104,7 +104,7 @@ with open(args.filename,'rb') as fp:
         data = ifft(fft(data,axis=1)*np.conjugate(np.abs(freq_axis-tx_cf)<(bandpass/2)),axis=1)
 
     doppler_axis = np.linspace(dopplerstart,dopplerstop,dopplersamples)
-    doppler_samples = np.zeros((windows,dopplersamples))
+    doppler_samples = np.zeros((windows,dopplersamples),dtype=np.complex128)
 
     for i,dop in enumerate(doppler_axis):
         # Baseband the data
@@ -114,12 +114,11 @@ with open(args.filename,'rb') as fp:
         data_sq = data_baseband**4
 
         # Measure signal
-        doppler_samples[:,i] = 20*np.log10(np.abs(np.mean(data_sq,axis=1)))
+        doppler_samples[:,i] = np.mean(data_sq,axis=1)
 
     # Averaging
-    data_smoothed = ifft(fft(np.abs(doppler_samples),axis=0),n=windows_out,axis=0)
-
-    
+    data_smoothed = 20*np.log10(np.abs(ifft(fft(doppler_samples,axis=0),n=windows_out,axis=0)))
+ 
     # Display
     if windows_out == 1:
         # Peak detect
