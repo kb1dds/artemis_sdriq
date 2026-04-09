@@ -122,7 +122,7 @@ with open(args.filename,'rb') as fp:
         data_baseband = data*np.exp(1j*2*np.pi*(tx_cf-center_freq-dop)/sample_rate*np.arange(window_size))
 
         # Apply RRC filter
-        data_baseband = ifft(fft(data_baseband,axis=1)*np.conjugate(rrcosfilter(window_size, 0.1, 1.0/bandpass, sample_rate)))
+        data_baseband = ifft(fft(data_baseband,axis=1)*np.conjugate(rrcosfilter(window_size, 0.35, 1.0/bandpass, sample_rate)))
 
         # Squash the phase
         data_sq = data_baseband**4
