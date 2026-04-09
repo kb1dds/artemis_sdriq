@@ -14,7 +14,7 @@ parser.add_argument('filename')
 parser.add_argument('--window_size',
                     type=int,
                     help='FFT window size',
-                    default=1024)
+                    default=1024576)
 parser.add_argument('--offset',
                     type=int,
                     help='Number of windows to skip before processing',
@@ -30,19 +30,19 @@ parser.add_argument('--center',
 parser.add_argument('--bandpass',
                     help='Bandpass filter width in Hz; default is None',
                     type=int,
-                    default=None)
+                    default=4000000)
 parser.add_argument('--dopplersamples',
                     help='Number of Doppler samples',
                     type=int,
-                    default=1024)
+                    default=512)
 parser.add_argument('--dopplerstart',
                     help='Doppler search start frequency (Hz)',
                     type=float,
-                    default=-23000)
+                    default=-19000)
 parser.add_argument('--dopplerstop',
                     help='Doppler search stop frequency (Hz)',
                     type=float,
-                    default=-18000)
+                    default=-17000)
 
 
 args = parser.parse_args()
