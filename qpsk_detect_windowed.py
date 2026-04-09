@@ -31,10 +31,6 @@ parser.add_argument('--center',
                     help='Desired center frequency in Hz',
                     type=int,
                     default=2216.5e6)
-parser.add_argument('--fftsamples',
-                    help='Number of samples in Doppler FFT',
-                    type=int,
-                    default=1024)
 parser.add_argument('--bandpass',
                     help='Bandpass filter width in Hz; default is None',
                     type=int,
@@ -48,14 +44,11 @@ args = parser.parse_args()
 
 window_size = args.window_size
 windows = args.windows
-fftsamples = args.fftsamples
 offset = args.offset
 nomarkers = args.nomarkers
 tx_cf = args.center
 bandpass = args.bandpass
 agc_size = args.agcsize
-
-symbol_rates = [72e3, 2e6, 4e6, 6e6] # Possible symbol rates
 
 with open(args.filename,'rb') as fp:
     sample_rate = np.fromfile(fp, dtype='uint32', count=1, sep='')[0]
@@ -104,25 +97,17 @@ with open(args.filename,'rb') as fp:
     data_sq = data**4
     
     # FFT
-    data_fft = fft(data_sq,axis=1,n=fftsamples)
+    data_fft = fft(data_sq,axis=1,n=window_size)
 
     # Averaging
     data_smoothed = 10*np.log10(ifft(fft(np.abs(data_fft)**2,axis=0),n=1,axis=0))
-    freq_axis=np.linspace(0,sample_rate,fftsamples)
-
-    # Peak detect
-    det_symbol_rate = freq_axis[np.argmax(data_smoothed.squeeze())]
+    freq_axis=np.linspace(0,sample_rate,window_size)
 
     # Display
     plt.plot(freq_axis,np.real(data_smoothed.squeeze()),'b')
-    if not nomarkers:
-        plt.plot([det_symbol_rate,det_symbol_rate],plt.ylim(),'c')
-        for sr in symbol_rates:
-            plt.plot([sr,sr],plt.ylim(),'r')
     plt.plot(freq_axis,np.real(data_smoothed.squeeze()),'b')
     plt.xlabel('Doppler frequency (Hz)')
     plt.ylabel('Relative signal level (dB)')
-    plt.title('Detected Doppler rate : {} kHz'.format(det_symbol_rate/1e3))
     plt.show()
     
     
