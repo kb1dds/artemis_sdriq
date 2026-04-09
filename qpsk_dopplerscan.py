@@ -139,6 +139,16 @@ with open(args.filename,'rb') as fp:
                    aspect = 'auto',
                    origin = 'lower'
                    )
+        if not nomarkers:
+            doppler_idx = np.argmax(data_smoothed,axis=1).squeeze()
+            time_axis = np.linspace(offset*window_size/sample_rate,
+                                    (offset+windows)*window_size/sample_rate,
+                                    windows_out)
+            doppler_dets = np.zeros_like(time_axis)
+            for i,d in enumerate(doppler_idx):
+                doppler_dets[i] = doppler_axis[d]
+
+            plt.plot(doppler_dets,time_axis,'b+')
         plt.xlabel('Doppler frequency (Hz)')
         plt.ylabel('Time (s)')
         plt.show()
