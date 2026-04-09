@@ -15,6 +15,14 @@ parser.add_argument('--window_size',
                     type=int,
                     help='FFT window size',
                     default=1024576)
+parser.add_argument('--windows',
+                    type=int,
+                    help='Number of windows to process',
+                    default=1)
+parser.add_argument('--windows_out',
+                    type=int,
+                    help='Number of windows to display',
+                    default=1)
 parser.add_argument('--offset',
                     type=int,
                     help='Number of windows to skip before processing',
@@ -48,6 +56,8 @@ parser.add_argument('--dopplerstop',
 args = parser.parse_args()
 
 window_size = args.window_size
+windows = args.windows
+windows_out = args.windows_out
 offset = args.offset
 nomarkers = args.nomarkers
 tx_cf = args.center
@@ -80,21 +90,21 @@ with open(args.filename,'rb') as fp:
     data = np.fromfile(fp,
                        dtype=sample_dtype,
                        sep='',
-                       count=2*window_size)
+                       count=2*window_size*windows)
     
     # Unpack the data into the proper complex type
-    data = np.reshape(data, (window_size,2), order='C')
-    data = data[:,0] + 1j*data[:,1]
+    data = np.reshape(data, (windows,window_size,2), order='C')
+    data = data[:,:,0] + 1j*data[:,:,1]
     freq_axis = np.linspace(center_freq-sample_rate/2,
                             center_freq+sample_rate/2,
                             window_size)
 
     # Use a bandpass filter on the signal
     if bandpass is not None:
-        data = ifft(fft(data,axis=0)*np.conjugate(np.abs(freq_axis-tx_cf)<(bandpass/2)))
+        data = ifft(fft(data,axis=1)*np.conjugate(np.abs(freq_axis-tx_cf)<(bandpass/2)),axis=1)
 
     doppler_axis = np.linspace(dopplerstart,dopplerstop,dopplersamples)
-    data_smoothed = np.zeros_like(doppler_axis)
+    doppler_samples = np.zeros((windows,dopplersamples))
 
     for i,dop in enumerate(doppler_axis):
         # Baseband the data
@@ -102,18 +112,34 @@ with open(args.filename,'rb') as fp:
 
         # Squash the phase
         data_sq = data_baseband**4
-    
-        # Measure signal
-        data_smoothed[i] = 20*np.log10(np.abs(np.mean(data_sq,axis=0)))
 
-    # Peak detect
-    detected_doppler = doppler_axis[np.argmax(data_smoothed.squeeze())]
+        # Measure signal
+        doppler_samples[:,i] = 20*np.log10(np.abs(np.mean(data_sq,axis=1)))
+
+    # Averaging
+    data_smoothed = ifft(fft(np.abs(doppler_samples),axis=0),n=windows_out,axis=0)
+
     
     # Display
-    plt.plot(doppler_axis,np.real(data_smoothed.squeeze()),'b')
-    plt.xlabel('Doppler frequency (Hz)')
-    plt.ylabel('Relative signal level (dB)')
-    plt.title('Detected Doppler {:.2f} Hz'.format(detected_doppler))
-    plt.show()
-    
-    
+    if windows_out == 1:
+        # Peak detect
+        detected_doppler = doppler_axis[np.argmax(data_smoothed,axis=1)].squeeze()
+
+        plt.plot(doppler_axis,np.real(data_smoothed.squeeze()))
+        plt.xlabel('Doppler frequency (Hz)')
+        plt.ylabel('Relative signal level (dB)')
+        plt.title('Detected Doppler {:.2f} Hz'.format(detected_doppler))
+        plt.show()
+    else:
+        plt.imshow(np.real(data_smoothed),
+                   extent=[dopplerstart,
+                           dopplerstop,
+                           offset*window_size/sample_rate,
+                           (offset+windows)*window_size/sample_rate],
+                   interpolation = 'none',
+                   aspect = 'auto',
+                   origin = 'lower'
+                   )
+        plt.xlabel('Doppler frequency (Hz)')
+        plt.ylabel('Time (s)')
+        plt.show()
