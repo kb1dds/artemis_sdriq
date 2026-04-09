@@ -72,23 +72,24 @@ with open(args.filename,'rb') as fp:
                        dtype=sample_dtype,
                        sep='',
                        count=2*window_size)
-
+    
     # Unpack the data into the proper complex type
     data = np.reshape(data, (window_size,2), order='C')
     data = data[:,0] + 1j*data[:,1]
     freq_axis = np.linspace(center_freq-sample_rate/2,
                             center_freq+sample_rate/2,
                             window_size)
+
+    # Use a bandpass filter on the signal
     if bandpass is not None:
-        data = ifft(fft(data,axis=0)*np.conjugate(fft(np.abs(freq_axis-tx_cf)<bandpass,axis=0)))
-    data.squeeze()
+        data = ifft(fft(data,axis=0)*np.conjugate(np.abs(freq_axis-tx_cf)<(bandpass/2)))
 
     # Baseband the data
-    data = data*np.exp(-1j*2*np.pi*tx_cf/sample_rate*np.arange(window_size))
+    data = data*np.exp(1j*2*np.pi*(tx_cf-center_freq)/sample_rate*np.arange(window_size))
 
     # Squash the phase
     data_sq = data**4
-
+    
     # FFT
     data_smoothed = 20*np.log10(np.abs(fft(data_sq,axis=0,n=fftsamples)))
     freq_axis=np.linspace(0,sample_rate,fftsamples)
@@ -105,7 +106,7 @@ with open(args.filename,'rb') as fp:
     plt.plot(freq_axis,np.real(data_smoothed.squeeze()),'b')
     plt.xlabel('Doppler frequency (Hz)')
     plt.ylabel('Relative signal level (dB)')
-    plt.title('Detected symbol rate : {:4.2f} MHz'.format(det_symbol_rate/1e6))
+    plt.title('Detected Doppler rate : {} kHz'.format(det_symbol_rate/1e3))
     plt.show()
     
     
