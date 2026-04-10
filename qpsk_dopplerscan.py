@@ -26,15 +26,15 @@ parser.add_argument('filename')
 parser.add_argument('--window_size',
                     type=int,
                     help='FFT window size',
-                    default=1024576)
+                    default=65536)
 parser.add_argument('--windows',
                     type=int,
                     help='Number of windows to process',
-                    default=1)
+                    default=4096)
 parser.add_argument('--windows_out',
                     type=int,
                     help='Number of windows to display',
-                    default=1)
+                    default=16)
 parser.add_argument('--offset',
                     type=int,
                     help='Number of windows to skip before processing',
@@ -50,20 +50,19 @@ parser.add_argument('--center',
 parser.add_argument('--bandpass',
                     help='Bandpass filter width in Hz; default is None',
                     type=int,
-                    default=4e6)
+                    default=None)
 parser.add_argument('--dopplersamples',
                     help='Number of Doppler samples',
                     type=int,
-                    default=512)
+                    default=1024)
 parser.add_argument('--dopplerstart',
                     help='Doppler search start frequency (Hz)',
                     type=float,
-                    default=-19000)
+                    default=-100000)
 parser.add_argument('--dopplerstop',
                     help='Doppler search stop frequency (Hz)',
                     type=float,
-                    default=-17000)
-
+                    default=100000)
 
 args = parser.parse_args()
 
@@ -122,7 +121,8 @@ with open(args.filename,'rb') as fp:
         data_baseband = data*np.exp(1j*2*np.pi*(tx_cf-center_freq-dop)/sample_rate*np.arange(window_size))
 
         # Apply RRC filter
-        data_baseband = ifft(fft(data_baseband,axis=1)*np.conjugate(rrcosfilter(window_size, 0.35, 1.0/bandpass, sample_rate)))
+        if bandpass is not None:
+            data_baseband = ifft(fft(data_baseband,axis=1)*np.conjugate(rrcosfilter(window_size, 0.35, 1.0/bandpass, sample_rate)))
 
         # Squash the phase
         data_sq = data_baseband**4
