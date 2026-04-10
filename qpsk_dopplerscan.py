@@ -63,6 +63,10 @@ parser.add_argument('--dopplerstop',
                     help='Doppler search stop frequency (Hz)',
                     type=float,
                     default=100000)
+parser.add_argument('--block_dc',
+                    help='Should the DC component be removed?',
+                    action='store_true',
+                    default=False)
 
 args = parser.parse_args()
 
@@ -76,6 +80,7 @@ bandpass = args.bandpass
 dopplersamples = args.dopplersamples
 dopplerstart = args.dopplerstart
 dopplerstop = args.dopplerstop
+block_dc = args.block_dc
 
 with open(args.filename,'rb') as fp:
     sample_rate = np.fromfile(fp, dtype='uint32', count=1, sep='')[0]
@@ -106,6 +111,10 @@ with open(args.filename,'rb') as fp:
     # Unpack the data into the proper complex type
     data = np.reshape(data, (windows,window_size,2), order='C')
     data = data[:,:,0] + 1j*data[:,:,1]
+
+    # Block DC if requested
+    if block_dc:
+        data = data-np.mean(data.flatten())
 
     # Various frequency axes
     freq_axis = np.linspace(center_freq-sample_rate/2,
