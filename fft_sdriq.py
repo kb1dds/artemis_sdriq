@@ -90,6 +90,7 @@ with open(args.filename,'rb') as fp:
     data = np.reshape(data, (windows*window_size,2), order='C')
     data = data[:,0] + 1j*data[:,1]
     data = data*np.exp(1j*2*np.pi*demod/sample_rate*np.arange(windows*window_size))
+    data = data*np.exp(1j*np.pi*np.arange(windows*window_size)) # For reasons unclear
     data = np.reshape(data, (windows,window_size), order='C')
     data.squeeze()
 

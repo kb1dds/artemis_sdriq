@@ -56,7 +56,6 @@ with open(args.filename,'rb') as fp:
     timestamp = np.fromfile(fp, dtype='uint64', count=1, sep='')[0]
     sample_size = np.fromfile(fp, dtype='uint32', count=1, sep='')[0]
     crc = np.fromfile(fp, dtype='uint32', count=1, sep='',offset=4)[0]
-    lo_freq = center_freq - sample_rate/2
 
     # Assess number of samples
     data_start = fp.tell()
@@ -78,8 +77,10 @@ with open(args.filename,'rb') as fp:
                        count=2*window_size*windows)
     
     # Unpack the data into the proper complex type
-    data = np.reshape(data, (windows,window_size,2), order='C')
-    data = data[:,:,0] + 1j*data[:,:,1]
+    data = np.reshape(data, (windows*window_size,2), order='C')
+    data = data[:,0] + 1j*data[:,1]
+    data = data*np.exp(1j*np.pi*np.arange(windows*window_size)) # For reasons unclear
+    data = np.reshape(data, (windows,window_size), order='C')
     freq_axis = np.linspace(center_freq-sample_rate/2,
                             center_freq+sample_rate/2,
                             window_size)
@@ -89,7 +90,7 @@ with open(args.filename,'rb') as fp:
         data = ifft(fft(data,axis=1)*np.conjugate(np.abs(freq_axis-tx_cf)<(bandpass/2)),axis=1)
 
     # Baseband the data
-    data = data*np.exp(1j*2*np.pi*(tx_cf-lo_freq)/sample_rate*np.arange(window_size))
+    data = data*np.exp(1j*2*np.pi*(tx_cf-center_freq)/sample_rate*np.arange(window_size))
 
     # AGC the data
     if agc_size > 1:

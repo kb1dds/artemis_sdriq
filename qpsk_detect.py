@@ -53,7 +53,6 @@ with open(args.filename,'rb') as fp:
     timestamp = np.fromfile(fp, dtype='uint64', count=1, sep='')[0]
     sample_size = np.fromfile(fp, dtype='uint32', count=1, sep='')[0]
     crc = np.fromfile(fp, dtype='uint32', count=1, sep='',offset=4)[0]
-    lo_freq = center_freq - sample_rate/2
 
     # Assess number of samples
     data_start = fp.tell()
@@ -77,6 +76,7 @@ with open(args.filename,'rb') as fp:
     # Unpack the data into the proper complex type
     data = np.reshape(data, (window_size,2), order='C')
     data = data[:,0] + 1j*data[:,1]
+    data = data*np.exp(1j*np.pi*np.arange(window_size)) # For reasons unclear
     freq_axis = np.linspace(center_freq-sample_rate/2,
                             center_freq+sample_rate/2,
                             window_size)
@@ -86,7 +86,7 @@ with open(args.filename,'rb') as fp:
         data = ifft(fft(data,axis=0)*np.conjugate(np.abs(freq_axis-tx_cf)<(bandpass/2)))
 
     # Baseband the data
-    data = data*np.exp(1j*2*np.pi*(tx_cf-lo_freq)/sample_rate*np.arange(window_size))
+    data = data*np.exp(1j*2*np.pi*(tx_cf-center_freq)/sample_rate*np.arange(window_size))
 
     # Squash the phase
     data_sq = data**4
