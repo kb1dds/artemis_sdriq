@@ -18,6 +18,7 @@ with open(args.filename,'rb') as fp:
     timestamp = np.fromfile(fp, dtype='uint64', count=1, sep='')[0]
     sample_size = np.fromfile(fp, dtype='uint32', count=1, sep='')[0]
     crc = np.fromfile(fp, dtype='uint32', count=1, sep='',offset=4)[0]
+    lo_freq = center_freq - sample_rate/2
 
     # Assess number of samples
     data_start = fp.tell()
@@ -27,10 +28,11 @@ with open(args.filename,'rb') as fp:
     elif sample_size == 24: # NB apparently actually "24" means 32 bits
         num_samples = (fp.tell()-data_start)/8
 
-    print('Timestamp:    {}'.format(datetime.datetime.fromtimestamp(timestamp/1000,datetime.UTC).isoformat()))
-    print('Sample rate:  {} Hz'.format(sample_rate))
-    print('Center freq:  {} Hz'.format(center_freq))
-    print('Sample size:  {} bits'.format(sample_size))
-    print('Sample count: {}'.format(num_samples))
+    print('Timestamp:      {}'.format(datetime.datetime.fromtimestamp(timestamp/1000,datetime.UTC).isoformat()))
+    print('Sample rate:    {} Hz'.format(sample_rate))
+    print('Center freq:    {} Hz'.format(center_freq))
+    print('Local osc freq: {} Hz'.format(lo_freq))
+    print('Sample size:    {} bits'.format(sample_size))
+    print('Sample count:   {}'.format(num_samples))
     
     

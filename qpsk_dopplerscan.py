@@ -89,6 +89,7 @@ with open(args.filename,'rb') as fp:
     timestamp = np.fromfile(fp, dtype='uint64', count=1, sep='')[0]
     sample_size = np.fromfile(fp, dtype='uint32', count=1, sep='')[0]
     crc = np.fromfile(fp, dtype='uint32', count=1, sep='',offset=4)[0]
+    lo_freq = center_freq - sample_rate/2
 
     # Assess number of samples
     data_start = fp.tell()
@@ -126,7 +127,7 @@ with open(args.filename,'rb') as fp:
 
     for i,dop in enumerate(doppler_axis):
         # Baseband the data
-        data_baseband = data*torch.exp(1j*2*np.pi*(tx_cf-center_freq-dop)/sample_rate*torch.arange(window_size).to(device))
+        data_baseband = data*torch.exp(1j*2*np.pi*(tx_cf-lo_freq-dop)/sample_rate*torch.arange(window_size).to(device))
 
         # Apply RRC filter
         if bandpass is not None:
