@@ -64,6 +64,9 @@ parser.add_argument('--dopplerstop',
                     help='Doppler search stop frequency (Hz)',
                     type=float,
                     default=100000)
+parser.add_argument('--device',
+                    help='PyTorch device',
+                    default='cpu')
 
 args = parser.parse_args()
 
@@ -78,7 +81,7 @@ dopplersamples = args.dopplersamples
 dopplerstart = args.dopplerstart
 dopplerstop = args.dopplerstop
 
-device = 'cuda'
+device = args.device
 
 with open(args.filename,'rb') as fp:
     sample_rate = np.fromfile(fp, dtype='uint32', count=1, sep='')[0]
