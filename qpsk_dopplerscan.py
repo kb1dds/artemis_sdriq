@@ -14,10 +14,10 @@ import datetime
 #  Now root raised cosine rather than raised cosine
 #  Now in frequency domain
 def rrcosfilter(N, beta, Ts, Fs):
-    t = (np.arange(N) - N / 2) / Fs
-    return torch.from_numpy(np.sqrt(fft(np.where(np.abs(2*t) == Ts / beta,
-        np.pi / 4 * np.sinc(t/Ts),
-        np.sinc(t/Ts) * np.cos(np.pi*beta*t/Ts) / (1 - (2*beta*t/Ts) ** 2)))))
+    t = (torch.arange(N) - N / 2) / Fs
+    return torch.sqrt(fft(torch.where(torch.abs(2*t) == Ts / beta,
+        torch.pi / 4 * torch.sinc(t/Ts),
+        torch.sinc(t/Ts) * torch.cos(torch.pi*beta*t/Ts) / (1 - (2*beta*t/Ts) ** 2))))
 
 parser = argparse.ArgumentParser(
     prog = 'qpsk_doppler.py',
@@ -123,11 +123,11 @@ with open(args.filename,'rb') as fp:
 
     for i,dop in enumerate(doppler_axis):
         # Baseband the data
-        data_baseband = data*torch.exp(1j*2*np.pi*(tx_cf-center_freq-dop)/sample_rate*torch.arange(window_size))
+        data_baseband = data*torch.exp(1j*2*np.pi*(tx_cf-center_freq-dop)/sample_rate*torch.arange(window_size).to(device))
 
         # Apply RRC filter
         if bandpass is not None:
-            data_baseband = ifft(fft(data_baseband,axis=1)*torch.conjugate(rrcosfilter(window_size, 0.35, 1.0/bandpass, sample_rate)).to(device))
+            data_baseband = ifft(fft(data_baseband,axis=1)*torch.conj(rrcosfilter(window_size, 0.35, 1.0/bandpass, sample_rate)).to(device))
 
         # Squash the phase
         data_sq = data_baseband**4
