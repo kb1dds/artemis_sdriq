@@ -122,19 +122,22 @@ with open(args.filename,'rb') as fp:
                             window_size)
     doppler_axis = np.linspace(dopplerstart,dopplerstop,dopplersamples)
 
+    if bandpass is not None:
+        filt=torch.conj(rrcosfilter(window_size, 0.35, 1.0/bandpass, sample_rate))
+    
     # Preallocate result array 
     doppler_samples = torch.zeros((windows,dopplersamples),dtype=torch.complex128)
-
+    
     for i,dop in enumerate(doppler_axis):
         # Baseband the data
         data_baseband = data*torch.exp(1j*2*np.pi*(tx_cf-lo_freq-dop)/sample_rate*torch.arange(window_size).to(device))
 
-        # Apply RRC filter
-        if bandpass is not None:
-            data_baseband = ifft(fft(data_baseband,axis=1)*torch.conj(rrcosfilter(window_size, 0.35, 1.0/bandpass, sample_rate)).to(device))
-
         # Squash the phase
         data_sq = data_baseband**4
+
+        # Apply RRC filter
+        if bandpass is not None:
+            data_baseband = ifft(fft(data_baseband,axis=1)*filt.to(device))
 
         # Measure signal
         doppler_samples[:,i] = torch.abs(torch.mean(data_sq,axis=1))
