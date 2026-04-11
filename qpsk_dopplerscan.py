@@ -2,7 +2,8 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from numpy.fft import fft,ifft
+import torch
+from torch.fft import fft,ifft
 import argparse
 import datetime
 
@@ -14,9 +15,9 @@ import datetime
 #  Now in frequency domain
 def rrcosfilter(N, beta, Ts, Fs):
     t = (np.arange(N) - N / 2) / Fs
-    return np.sqrt(fft(np.where(np.abs(2*t) == Ts / beta,
+    return torch.from_numpy(np.sqrt(fft(np.where(np.abs(2*t) == Ts / beta,
         np.pi / 4 * np.sinc(t/Ts),
-        np.sinc(t/Ts) * np.cos(np.pi*beta*t/Ts) / (1 - (2*beta*t/Ts) ** 2))))
+        np.sinc(t/Ts) * np.cos(np.pi*beta*t/Ts) / (1 - (2*beta*t/Ts) ** 2)))))
 
 parser = argparse.ArgumentParser(
     prog = 'qpsk_doppler.py',
@@ -77,6 +78,8 @@ dopplersamples = args.dopplersamples
 dopplerstart = args.dopplerstart
 dopplerstop = args.dopplerstop
 
+device = 'cuda'
+
 with open(args.filename,'rb') as fp:
     sample_rate = np.fromfile(fp, dtype='uint32', count=1, sep='')[0]
     center_freq = np.fromfile(fp, dtype='uint64', count=1, sep='')[0]
@@ -107,6 +110,8 @@ with open(args.filename,'rb') as fp:
     data = np.reshape(data, (windows,window_size,2), order='C')
     data = data[:,:,0] + 1j*data[:,:,1]
 
+    data = torch.from_numpy(data).to(device)
+
     # Various frequency axes
     freq_axis = np.linspace(center_freq-sample_rate/2,
                             center_freq+sample_rate/2,
@@ -114,24 +119,24 @@ with open(args.filename,'rb') as fp:
     doppler_axis = np.linspace(dopplerstart,dopplerstop,dopplersamples)
 
     # Preallocate result array 
-    doppler_samples = np.zeros((windows,dopplersamples),dtype=np.complex128)
+    doppler_samples = torch.zeros((windows,dopplersamples),dtype=torch.complex128)
 
     for i,dop in enumerate(doppler_axis):
         # Baseband the data
-        data_baseband = data*np.exp(1j*2*np.pi*(tx_cf-center_freq-dop)/sample_rate*np.arange(window_size))
+        data_baseband = data*torch.exp(1j*2*np.pi*(tx_cf-center_freq-dop)/sample_rate*torch.arange(window_size))
 
         # Apply RRC filter
         if bandpass is not None:
-            data_baseband = ifft(fft(data_baseband,axis=1)*np.conjugate(rrcosfilter(window_size, 0.35, 1.0/bandpass, sample_rate)))
+            data_baseband = ifft(fft(data_baseband,axis=1)*torch.conjugate(rrcosfilter(window_size, 0.35, 1.0/bandpass, sample_rate)).to(device))
 
         # Squash the phase
         data_sq = data_baseband**4
 
         # Measure signal
-        doppler_samples[:,i] = np.abs(np.mean(data_sq,axis=1))
+        doppler_samples[:,i] = torch.abs(torch.mean(data_sq,axis=1))
 
     # Averaging
-    data_smoothed = 20*np.log10(np.abs(ifft(fft(doppler_samples,axis=0),n=windows_out,axis=0)))
+    data_smoothed = 20*torch.log10(torch.abs(ifft(fft(doppler_samples,axis=0),n=windows_out,axis=0))).to('cpu').numpy()
  
     # Display
     if windows_out == 1:
