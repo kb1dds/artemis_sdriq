@@ -36,6 +36,10 @@ parser.add_argument('--windows_out',
                     type=int,
                     help='Number of windows to display',
                     default=1)
+parser.add_argument('--batches',
+                    type=int,
+                    help='Number of batches of windows to run',
+                    default=1)
 parser.add_argument('--offset',
                     type=int,
                     help='Number of windows to skip before processing',
@@ -73,6 +77,7 @@ args = parser.parse_args()
 window_size = args.window_size
 windows = args.windows
 windows_out = args.windows_out
+batches = args.batches
 offset = args.offset
 nomarkers = args.nomarkers
 tx_cf = args.center
@@ -101,21 +106,9 @@ with open(args.filename,'rb') as fp:
         sample_bytes = 8
         sample_dtype = 'int32'
         num_samples = (fp.tell()-data_start)/8
-        
-    # Pull data from the file
-    fp.seek(data_start+window_size*offset*sample_bytes,0)
-    data = np.fromfile(fp,
-                       dtype=sample_dtype,
-                       sep='',
-                       count=2*window_size*windows)
-    
-    # Unpack the data into the proper complex type
-    data = np.reshape(data, (windows*window_size,2), order='C')
-    data = data[:,0] + 1j*data[:,1]
-    data = data*np.exp(1j*np.pi*np.arange(windows*window_size)) # For reasons unclear
-    data = np.reshape(data, (windows,window_size), order='C')
-    data = torch.from_numpy(data).to(device)
 
+    fp.seek(data_start+window_size*offset*sample_bytes,0)
+        
     # Various frequency axes
     freq_axis = np.linspace(center_freq-sample_rate/2,
                             center_freq+sample_rate/2,
@@ -127,23 +120,37 @@ with open(args.filename,'rb') as fp:
         filt=torch.conj(rrcosfilter(window_size, 0.35, 1.0/bandpass, sample_rate).to(device))
     
     # Preallocate result array 
-    doppler_samples = torch.zeros((windows,dopplersamples),dtype=torch.complex128)
+    doppler_samples = torch.zeros((windows*batches,dopplersamples),dtype=torch.complex128)
+
+    for batch in range(batches):
+        # Pull data from the file
+        data = np.fromfile(fp,
+                           dtype=sample_dtype,
+                           sep='',
+                           count=2*window_size*windows)
     
-    for i,dop in enumerate(doppler_axis):
-        # Apply RRC filter
-        if bandpass is not None:
-            data_baseband = ifft(fft(data,axis=1)*filt)
-        else:
-            data_baseband = data
+        # Unpack the data into the proper complex type
+        data = np.reshape(data, (windows*window_size,2), order='C')
+        data = data[:,0] + 1j*data[:,1]
+        data = data*np.exp(1j*np.pi*np.arange(windows*window_size)) # For reasons unclear
+        data = np.reshape(data, (windows,window_size), order='C')
+        data = torch.from_numpy(data).to(device)
+    
+        for i,dop in enumerate(doppler_axis):
+            # Apply RRC filter
+            if bandpass is not None:
+                data_baseband = ifft(fft(data,axis=1)*filt)
+            else:
+                data_baseband = data
 
-        # Baseband the data
-        data_baseband = data_baseband*torch.exp(1j*2*np.pi*(tx_cf-center_freq-dop)/sample_rate*torch.arange(window_size).to(device))
+            # Baseband the data
+            data_baseband = data_baseband*torch.exp(1j*2*np.pi*(tx_cf-center_freq-dop)/sample_rate*torch.arange(window_size).to(device))
 
-        # Squash the phase
-        data_sq = data_baseband**4
+            # Squash the phase
+            data_sq = data_baseband**4
 
-        # Measure signal
-        doppler_samples[:,i] = torch.abs(torch.mean(data_sq,axis=1))
+            # Measure signal
+            doppler_samples[batch*windows:(batch+1)*windows,i] = torch.abs(torch.mean(data_sq,axis=1))
 
     # Averaging
     data_smoothed = 20*torch.log10(torch.abs(ifft(fft(doppler_samples,axis=0),n=windows_out,axis=0))).to('cpu').numpy()
