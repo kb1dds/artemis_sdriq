@@ -72,6 +72,9 @@ parser.add_argument('--dopplerstop',
 parser.add_argument('--device',
                     help='PyTorch device',
                     default='cpu')
+parser.add_argument('--outfile',
+                    help='Name of file to save figure to (default is to show figure)',
+                    default=None)
 
 args = parser.parse_args()
 
@@ -86,7 +89,7 @@ bandpass = args.bandpass
 dopplersamples = args.dopplersamples
 dopplerstart = args.dopplerstart
 dopplerstop = args.dopplerstop
-
+outfile = args.outfile
 device = args.device
 
 with open(args.filename,'rb') as fp:
@@ -171,7 +174,6 @@ with open(args.filename,'rb') as fp:
         plt.xlabel('Doppler frequency (Hz)')
         plt.ylabel('Relative signal level (dB)')
         plt.title('Detected Doppler {:.2f} Hz'.format(detected_doppler))
-        plt.show()
     else:
         plt.imshow(np.real(data_smoothed),
                    extent=[dopplerstart,
@@ -194,4 +196,9 @@ with open(args.filename,'rb') as fp:
             plt.plot(doppler_dets,time_axis,'r+')
         plt.xlabel('Doppler frequency (Hz)')
         plt.ylabel('Time (s)')
+
+    # Save or display output figure
+    if outfile is None:
         plt.show()
+    else:
+        plt.savefig(outfile)
