@@ -6,6 +6,7 @@ import torch
 from torch.fft import fft,ifft
 import argparse
 import datetime
+import tqdm
 
 # Source - https://stackoverflow.com/a/56530727
 # Posted by janispritzkau
@@ -122,7 +123,7 @@ with open(args.filename,'rb') as fp:
     # Preallocate result array 
     doppler_samples = torch.zeros((windows*batches,dopplersamples),dtype=torch.complex128)
 
-    for batch in range(batches):
+    for batch in tqdm.tqdm(range(batches),desc='Running batches',position=0):
         # Pull data from the file
         data = np.fromfile(fp,
                            dtype=sample_dtype,
@@ -136,7 +137,7 @@ with open(args.filename,'rb') as fp:
         data = np.reshape(data, (windows,window_size), order='C')
         data = torch.from_numpy(data).to(device)
     
-        for i,dop in enumerate(doppler_axis):
+        for i,dop in enumerate(tqdm.tqdm(doppler_axis,desc='Doppler sweep',position=1,leave=False)):
             # Apply RRC filter
             if bandpass is not None:
                 data_baseband = ifft(fft(data,axis=1)*filt)
