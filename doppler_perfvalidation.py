@@ -102,7 +102,7 @@ parser.add_argument('--outfile',
 parser.add_argument('--snrstart',
                     help='SNR to start sweep (dB)',
                     type=float,
-                    default=-5)
+                    default=-20)
 parser.add_argument('--snrstop',
                     help='SNR to stop sweep (dB)',
                     type=float,
@@ -110,7 +110,7 @@ parser.add_argument('--snrstop',
 parser.add_argument('--snrsamples',
                     help='Number of SNR values to test',
                     type=int,
-                    default=5)
+                    default=10)
 parser.add_argument('--sample_rate',
                     help='Sample rate Hz',
                     type=int,
@@ -148,7 +148,7 @@ symbol_rate = args.symbol_rate
 true_dop = args.true_dop
 
 # Which processing window sizes counts to test
-windows_list = [2**i for i in range(8,20)]
+windows_list = [2**i for i in range(8,14)]
 
 # Which doppler frequencies to test
 doppler_axis = np.linspace(dopplerstart,dopplerstop,dopplersamples)
