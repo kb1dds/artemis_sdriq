@@ -195,11 +195,12 @@ with open(args.filename,'rb') as fp:
     if windows_out == 1:
         # Peak detect
         detected_doppler = doppler_axis[np.argmax(data_smoothed,axis=1)].squeeze()
+        doppler_snr = np.max(data_smoothed,axis=1) - np.mean(data_smoothed,axis=1) - np.std(data_smoothed,axis=1)
 
         plt.plot(doppler_axis,np.real(data_smoothed.squeeze()))
         plt.xlabel('Doppler frequency (Hz)')
         plt.ylabel('Relative signal level (dB)')
-        plt.title('Detected Doppler {:.2f} Hz'.format(detected_doppler))
+        plt.title('Detected Doppler {:.2f} Hz, SNR {:.2f} dB'.format(detected_doppler,np.real(doppler_snr).squeeze()))
     else:
         plt.imshow(np.real(data_smoothed),
                    extent=[dopplerstart,
