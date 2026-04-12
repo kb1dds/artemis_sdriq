@@ -8,17 +8,18 @@ import argparse
 import datetime
 import tqdm
 
-def doppler_processor(data,sample_rate,center_freq,tx_cf,doppler_axis,filt=None):
+def doppler_processor(data,sample_rate,center_freq,tx_cf,doppler_axis,filt=None,device='cpu'):
     '''
     Run Doppler sweep for QPSK signal detection
 
     Inputs:
-       data = complex samples (windows,window_size)
-       sample_rate = I/Q sample rate in Hz
-       center_freq = center frequency of sampler in Hz
-       tx_cf       = expected transmitter center frequency in Hz
+       data         = complex samples (windows,window_size)
+       sample_rate  = I/Q sample rate in Hz
+       center_freq  = center frequency of sampler in Hz
+       tx_cf        = expected transmitter center frequency in Hz
        doppler_axis = Doppler frequencies to try (vector, Hz)
-       filt        = filter shape to apply (window_size)
+       filt         = filter shape to apply (window_size)
+       device       = torch device for computation
 
     Outputs:
        doppler_samples = estimate of signal at given Doppler (windows,doppler_axis length)
@@ -131,6 +132,9 @@ dopplerstop = args.dopplerstop
 outfile = args.outfile
 device = args.device
 
+# Which doppler frequencies to test
+doppler_axis = np.linspace(dopplerstart,dopplerstop,dopplersamples)
+
 with open(args.filename,'rb') as fp:
     sample_rate = np.fromfile(fp, dtype='uint32', count=1, sep='')[0]
     center_freq = np.fromfile(fp, dtype='uint64', count=1, sep='')[0]
@@ -157,22 +161,16 @@ with open(args.filename,'rb') as fp:
     if batches < 0:
         batches = int((num_samples-offset*window_size)/(windows*window_size))
         print('Reading a total of {} windows in {} batches'.format(windows*batches,batches))
-        
-    # Various frequency axes
-    freq_axis = np.linspace(center_freq-sample_rate/2,
-                            center_freq+sample_rate/2,
-                            window_size)
-    doppler_axis = np.linspace(dopplerstart,dopplerstop,dopplersamples)
 
+    # Preallocate result array 
+    doppler_samples = torch.zeros((windows*batches,dopplersamples),dtype=torch.complex128)
+        
     # Pre-build bandpass filter if needed
     if bandpass is not None:
         filt=torch.conj(rrcosfilter(window_size, 0.35, 1.0/bandpass, sample_rate).to(device))
     else:
         filt = None
     
-    # Preallocate result array 
-    doppler_samples = torch.zeros((windows*batches,dopplersamples),dtype=torch.complex128)
-
     for batch in tqdm.tqdm(range(batches),desc='Running batches',position=0):
         # Pull data from the file
         data = np.fromfile(fp,
@@ -188,7 +186,7 @@ with open(args.filename,'rb') as fp:
         data = torch.from_numpy(data).to(device)
 
         # Apply Doppler processing
-        doppler_samples[batch*windows:(batch+1)*windows,:] = doppler_processor(data,sample_rate,center_freq,tx_cf,doppler_axis,filt)
+        doppler_samples[batch*windows:(batch+1)*windows,:] = doppler_processor(data,sample_rate,center_freq,tx_cf,doppler_axis,filt,device)
 
     # Averaging
     data_smoothed = 20*torch.log10(torch.abs(ifft(fft(doppler_samples,axis=0),n=windows_out,axis=0))).to('cpu').numpy()
