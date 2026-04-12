@@ -39,7 +39,7 @@ parser.add_argument('--windows_out',
                     default=1)
 parser.add_argument('--batches',
                     type=int,
-                    help='Number of batches of windows to run',
+                    help='Number of batches of windows to run (-1 means consume entire file)',
                     default=1)
 parser.add_argument('--offset',
                     type=int,
@@ -108,7 +108,13 @@ with open(args.filename,'rb') as fp:
         sample_dtype = 'int32'
         num_samples = (fp.tell()-data_start)/8
 
+    # Move to the start of the data segment, incorporating any offset
     fp.seek(data_start+window_size*offset*sample_bytes,0)
+
+    # If requested, determine how many windows and batches should be used
+    if batches < 0:
+        batches = int((num_samples-offset*window_size)/(windows*window_size))
+        print('Reading a total of {} windows in {} batches'.format(windows*batches,batches))
         
     # Various frequency axes
     freq_axis = np.linspace(center_freq-sample_rate/2,
