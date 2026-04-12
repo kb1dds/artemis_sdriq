@@ -31,7 +31,7 @@ def doppler_processor(data,sample_rate,center_freq,tx_cf,doppler_axis,filt=None,
 
     doppler_samples = torch.zeros((windows,doppler_size),dtype=torch.complex128)
     
-    for i,dop in enumerate(tqdm.tqdm(doppler_axis,desc='Doppler sweep',position=1,leave=False)):
+    for i,dop in enumerate(tqdm.tqdm(doppler_axis,desc='Doppler sweep',position=2,leave=False)):
         # Apply filtering if requested
         if filt is not None:
             data_baseband = ifft(fft(data,axis=1)*filt)
@@ -102,7 +102,7 @@ parser.add_argument('--outfile',
 parser.add_argument('--snrstart',
                     help='SNR to start sweep (dB)',
                     type=float,
-                    default=0)
+                    default=-5)
 parser.add_argument('--snrstop',
                     help='SNR to stop sweep (dB)',
                     type=float,
@@ -147,63 +147,69 @@ center_freq = args.center_freq
 symbol_rate = args.symbol_rate
 true_dop = args.true_dop
 
+# Which processing window sizes counts to test
+windows_list = [2**i for i in range(8,20)]
+
 # Which doppler frequencies to test
 doppler_axis = np.linspace(dopplerstart,dopplerstop,dopplersamples)
 true_doppler_sample = int(np.min(np.where(doppler_axis-true_dop>0.)))
 snr_axis = np.linspace(snrstart,snrstop,snrsamples)
 
-# Preallocate result array 
-doppler_samples = torch.zeros((windows,dopplersamples),dtype=torch.complex128)
-        
-# Pre-build bandpass filter if needed
-if bandpass is not None:
-    filt=torch.conj(rrcosfilter(window_size, 0.35, 1.0/bandpass, sample_rate).to(device))
-else:
-    filt = None
-
-# Synthesize fixed signal
-time_axis = np.linspace(0,windows*window_size/sample_rate,windows*window_size)
-message_axis = np.arange(0,windows*window_size/sample_rate,1/symbol_rate)
-message = np.floor(np.random.rand(*message_axis.shape)*4)/2
-message = np.exp(1j*np.pi*scipy.interpolate.interpn((message_axis,),message,time_axis,method='nearest',bounds_error=False,fill_value=0.))
-signal = np.exp(-1j*(2*np.pi*(tx_cf-true_dop-center_freq)*time_axis)+message)
-signal_power = np.var(signal)
-
 # Preallocate output
-doppler_estimates = np.zeros_like(snr_axis)
-doppler_snr = np.zeros_like(snr_axis)
+doppler_estimates = np.zeros((snrsamples,len(windows_list)))
+doppler_snr = np.zeros((snrsamples,len(windows_list)))
 
-for i,snr in enumerate(tqdm.tqdm(snr_axis,desc='Running SNR samples',position=0)):
-    # Noise profile (AWGN)
-    noise = np.random.randn(*time_axis.shape)
-    noise_power = np.var(noise)
+for wi,window_size in enumerate(tqdm.tqdm(windows_list,'Running window sizes',position=0)):
+    # Preallocate result array for each Doppler processing run 
+    doppler_samples = torch.zeros((windows,dopplersamples),dtype=torch.complex128)
 
-    # Synthesize data
-    data = 10**(snr/10.)*(noise_power/signal_power)**2*signal+noise
+    # Pre-build bandpass filter if needed
+    if bandpass is not None:
+        filt=torch.conj(rrcosfilter(window_size, 0.35, 1.0/bandpass, sample_rate).to(device))
+    else:
+        filt = None
+
+    # Synthesize fixed signal
+    time_axis = np.linspace(0,windows*window_size/sample_rate,windows*window_size)
+    message_axis = np.arange(0,windows*window_size/sample_rate,1/symbol_rate)
+    message = np.floor(np.random.rand(*message_axis.shape)*4)/2
+    message = np.exp(1j*np.pi*scipy.interpolate.interpn((message_axis,),message,time_axis,method='nearest',bounds_error=False,fill_value=0.))
+    signal = np.exp(-1j*(2*np.pi*(tx_cf-true_dop-center_freq)*time_axis)+message)
+    signal_power = np.var(signal)
+
+    for i,snr in enumerate(tqdm.tqdm(snr_axis,desc='Running SNR samples',position=1,leave=False)):
+        # Noise profile (AWGN)
+        noise = np.random.randn(*time_axis.shape)
+        noise_power = np.var(noise)
+
+        # Synthesize data
+        data = 10**(snr/20.)*np.sqrt(noise_power/signal_power)*signal+noise
     
-    # Unpack the data into the proper shape
-    data = np.reshape(data, (windows,window_size), order='C')
-    data = torch.from_numpy(data).to(device)
+        # Unpack the data into the proper shape
+        data = np.reshape(data, (windows,window_size), order='C')
+        data = torch.from_numpy(data).to(device)
 
-    # Apply Doppler processing
-    doppler_samples = doppler_processor(data,sample_rate,center_freq,tx_cf,doppler_axis,filt,device)
+        # Apply Doppler processing
+        doppler_samples = doppler_processor(data,sample_rate,center_freq,tx_cf,doppler_axis,filt,device)
 
-    # Averaging
-    data_smoothed = 20*torch.log10(torch.abs(torch.mean(doppler_samples,axis=0))).to('cpu').numpy()
+        # Averaging
+        data_smoothed = 20*torch.log10(torch.abs(torch.mean(doppler_samples,axis=0))).to('cpu').numpy()
     
-    # Doppler detection
-    doppler_estimates[i] = doppler_axis[np.argmax(data_smoothed)].squeeze()
-    doppler_snr[i] = np.real(data_smoothed[true_doppler_sample] - np.mean(data_smoothed) - np.std(data_smoothed)).squeeze()
+        # Doppler detection
+        doppler_estimates[i,wi] = doppler_axis[np.argmax(data_smoothed)].squeeze()
+        doppler_snr[i,wi] = np.real(np.max(data_smoothed[true_doppler_sample-2:true_doppler_sample+2]) - np.mean(data_smoothed[np.abs(doppler_axis)>true_dop]) - np.std(data_smoothed[np.abs(doppler_axis)>true_dop])).squeeze()
 
-#    plt.plot(doppler_axis,np.real(data_smoothed.squeeze()))
-#    plt.plot([true_dop,true_dop],plt.ylim())
-#    plt.xlabel('Doppler frequency (Hz)')
-#    plt.ylabel('Relative signal level (dB)')
-#    plt.title('Detected Doppler {:.2f} Hz, SNR {:.2f} dB'.format(doppler_estimates[i],doppler_snr[i]))
-#    plt.show()
+#        plt.plot(doppler_axis,np.real(data_smoothed.squeeze()))
+#        plt.plot([true_dop,true_dop],plt.ylim())
+#        plt.plot(doppler_axis[true_doppler_sample],np.real(data_smoothed[true_doppler_sample]),'b+')
+#        plt.xlabel('Doppler frequency (Hz)')
+#        plt.ylabel('Relative signal level (dB)')
+#        plt.title('Detected Doppler {:.2f} Hz, SNR {:.2f} dB'.format(doppler_estimates[wi,i],doppler_snr[wi,i]))
+#        plt.show()
 
 # Display
 plt.plot(snr_axis,doppler_snr)
+plt.legend(windows_list)
 plt.xlabel('Signal SNR (dB)')
 plt.ylabel('Doppler estimate SNR (dB)')
 
