@@ -8,6 +8,45 @@ import argparse
 import datetime
 import tqdm
 
+def doppler_processor(data,sample_rate,center_freq,tx_cf,doppler_axis,filt=None):
+    '''
+    Run Doppler sweep for QPSK signal detection
+
+    Inputs:
+       data = complex samples (windows,window_size)
+       sample_rate = I/Q sample rate in Hz
+       center_freq = center frequency of sampler in Hz
+       tx_cf       = expected transmitter center frequency in Hz
+       doppler_axis = Doppler frequencies to try (vector, Hz)
+       filt        = filter shape to apply (window_size)
+
+    Outputs:
+       doppler_samples = estimate of signal at given Doppler (windows,doppler_axis length)
+    '''
+    windows = data.shape[0]
+    window_size = data.shape[1]
+    doppler_size = doppler_axis.shape[0]
+
+    doppler_samples = torch.zeros((windows,doppler_size),dtype=torch.complex128)
+    
+    for i,dop in enumerate(tqdm.tqdm(doppler_axis,desc='Doppler sweep',position=1,leave=False)):
+        # Apply filtering if requested
+        if filt is not None:
+            data_baseband = ifft(fft(data,axis=1)*filt)
+        else:
+            data_baseband = data
+
+        # Baseband the data
+        data_baseband = data_baseband*torch.exp(1j*2*torch.pi*(tx_cf-center_freq-dop)/sample_rate*torch.arange(window_size).to(device))
+
+        # Squash the phase
+        data_sq = data_baseband**4
+
+        # Measure signal
+        doppler_samples[:,i] = torch.abs(torch.mean(data_sq,axis=1))
+        
+    return doppler_samples            
+
 # Source - https://stackoverflow.com/a/56530727
 # Posted by janispritzkau
 # Retrieved 2026-04-09, License - CC BY-SA 4.0
@@ -128,6 +167,8 @@ with open(args.filename,'rb') as fp:
     # Pre-build bandpass filter if needed
     if bandpass is not None:
         filt=torch.conj(rrcosfilter(window_size, 0.35, 1.0/bandpass, sample_rate).to(device))
+    else:
+        filt = None
     
     # Preallocate result array 
     doppler_samples = torch.zeros((windows*batches,dopplersamples),dtype=torch.complex128)
@@ -145,22 +186,9 @@ with open(args.filename,'rb') as fp:
         data = data*np.exp(1j*np.pi*np.arange(windows*window_size)) # For reasons unclear
         data = np.reshape(data, (windows,window_size), order='C')
         data = torch.from_numpy(data).to(device)
-    
-        for i,dop in enumerate(tqdm.tqdm(doppler_axis,desc='Doppler sweep',position=1,leave=False)):
-            # Apply RRC filter
-            if bandpass is not None:
-                data_baseband = ifft(fft(data,axis=1)*filt)
-            else:
-                data_baseband = data
 
-            # Baseband the data
-            data_baseband = data_baseband*torch.exp(1j*2*np.pi*(tx_cf-center_freq-dop)/sample_rate*torch.arange(window_size).to(device))
-
-            # Squash the phase
-            data_sq = data_baseband**4
-
-            # Measure signal
-            doppler_samples[batch*windows:(batch+1)*windows,i] = torch.abs(torch.mean(data_sq,axis=1))
+        # Apply Doppler processing
+        doppler_samples[batch*windows:(batch+1)*windows,:] = doppler_processor(data,sample_rate,center_freq,tx_cf,doppler_axis,filt)
 
     # Averaging
     data_smoothed = 20*torch.log10(torch.abs(ifft(fft(doppler_samples,axis=0),n=windows_out,axis=0))).to('cpu').numpy()
