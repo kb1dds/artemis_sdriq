@@ -72,7 +72,7 @@ parser.add_argument('--window_size',
 parser.add_argument('--windows',
                     type=int,
                     help='Number of windows to process',
-                    default=256)
+                    default=512)
 parser.add_argument('--center',
                     help='Desired center frequency in Hz',
                     type=int,
@@ -84,7 +84,7 @@ parser.add_argument('--bandpass',
 parser.add_argument('--dopplersamples',
                     help='Number of Doppler samples',
                     type=int,
-                    default=256)
+                    default=1024)
 parser.add_argument('--dopplerstart',
                     help='Doppler search start frequency (Hz)',
                     type=float,
