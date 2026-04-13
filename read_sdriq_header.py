@@ -34,5 +34,6 @@ with open(args.filename,'rb') as fp:
     print('Local osc freq: {} Hz'.format(lo_freq))
     print('Sample size:    {} bits'.format(sample_size))
     print('Sample count:   {}'.format(num_samples))
+    print('Length:         {:.2f} s'.format(num_samples/sample_rate.astype('float64')))
     
     
