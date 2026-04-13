@@ -51,8 +51,8 @@ bandpass = args.bandpass
 agc_size = args.agcsize
 
 with open(args.filename,'rb') as fp:
-    sample_rate = np.fromfile(fp, dtype='uint32', count=1, sep='')[0]
-    center_freq = np.fromfile(fp, dtype='uint64', count=1, sep='')[0]
+    sample_rate = np.fromfile(fp, dtype='uint32', count=1, sep='')[0].astype('float64')
+    center_freq = np.fromfile(fp, dtype='uint64', count=1, sep='')[0].astype('float64')
     timestamp = np.fromfile(fp, dtype='uint64', count=1, sep='')[0]
     sample_size = np.fromfile(fp, dtype='uint32', count=1, sep='')[0]
     crc = np.fromfile(fp, dtype='uint32', count=1, sep='',offset=4)[0]
