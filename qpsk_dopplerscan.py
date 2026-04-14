@@ -38,7 +38,7 @@ def doppler_processor(data,sample_rate,center_freq,tx_cf,doppler_axis,filt=None,
             data_baseband = data
 
         # Baseband the data
-        data_baseband = data_baseband*torch.exp(1j*2*torch.pi*(tx_cf-center_freq-dop)/sample_rate*torch.arange(window_size).to(device))
+        data_baseband = data_baseband*torch.exp(1j*2*torch.pi*(tx_cf-center_freq-dop-sample_rate/2)/sample_rate*torch.arange(window_size).to(device))
 
         # Squash the phase
         data_sq = data_baseband**4
